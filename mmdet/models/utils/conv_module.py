@@ -141,7 +141,8 @@ class ConvModule(nn.Module):
                 raise ValueError('{} is currently not supported.'.format(
                     self.activation))
             if self.activation == 'relu':
-                self.activate = nn.ReLU(inplace=inplace)
+                # self.activate = nn.ReLU(inplace=inplace)
+                self.activate = nn.ReLU()
 
         # Use msra init by default
         self.init_weights()
