@@ -2,6 +2,7 @@ import json
 import pandas as pd
 import math
 import os
+import pprint
 
 CLASSES = ['cow', 'sheep', 'dog', 'horse', 'cat']
 
@@ -25,8 +26,9 @@ def images_with_only_class(className, categories, annotations):
 
     return imagesOnlyWithClass
 
+
 def main(type):
-    f = open(f"/home/aidan/fiftyone/coco-2017-2/{type}/labels.json")
+    f = open(f"/home/aidan/fiftyone/coco-2017-2/{type}/labels.json", 'r')
 
     # returns JSON object as
     # a dictionary
@@ -44,6 +46,20 @@ def main(type):
     filteredCategories = categories[categories['name'].isin(CLASSES)]
     filteredAnnotations = annotations[annotations['category_id'].isin(filteredCategories['id'])]
     filteredImages = images[images['id'].isin(filteredAnnotations['image_id'])]
+
+    # Resetting the category IDs
+    filteredCategories['new_id'] = list(range(1, len(CLASSES) + 1))
+
+    filteredAnnotations = pd.merge(filteredAnnotations, filteredCategories, left_on=['category_id'], right_on='id',suffixes=['_annotations', '_categories'])
+
+    # Changing the category ID for each annotation to the new category ids
+    filteredAnnotations['category_id'] = filteredAnnotations['new_id']
+    filteredAnnotations = filteredAnnotations.drop(['id_categories', 'new_id', 'name'], axis=1)
+    filteredAnnotations = filteredAnnotations.rename({'id_annotations': 'id'}, axis=1)
+
+    # Removing the old category IDs
+    filteredCategories['id'] = filteredCategories['new_id']
+    filteredCategories = filteredCategories.drop(['new_id'], axis=1)
 
     # Computing Object Counts Before
     df = pd.merge(filteredCategories, filteredAnnotations, left_on='id', right_on='category_id')
@@ -86,22 +102,24 @@ def main(type):
     data['annotations'] = filteredAnnotations.to_dict('records')
     data['categories'] = filteredCategories.to_dict('records')
     data['images'] = filteredImages.to_dict('records')
+    data['info']['categories'] = filteredCategories.to_dict('records')
+
+    print(data.keys())
+    print(data)
 
     # Getting the images we want to keep
-    imageFileNames = [image['file_name'] for image in data['images']]
-
-    # Removing images we don't want
-    for image in os.listdir(f"/home/aidan/fiftyone/coco-2017-2/{type}/data/"):
-        if image not in imageFileNames:
-            os.remove(f"/home/aidan/fiftyone/coco-2017-2/{type}/data/{image}")
-
-
-
-    # Dumping the new label
-    jsonObject = json.dumps(data)
-
-    with open(f"/home/aidan/fiftyone/coco-2017-2/{type}/labels.json", "w") as outfile:
-        outfile.write(jsonObject)
+    # imageFileNames = [image['file_name'] for image in data['images']]
+    #
+    # # Removing images we don't want
+    # for image in os.listdir(f"/home/aidan/fiftyone/coco-2017-2/{type}/data/"):
+    #     if image not in imageFileNames:
+    #         os.remove(f"/home/aidan/fiftyone/coco-2017-2/{type}/data/{image}")
+    #
+    # # Dumping the new label
+    # jsonObject = json.dumps(data)
+    #
+    # with open(f"/home/aidan/fiftyone/coco-2017-2/{type}/labels.json", "w") as outfile:
+    #     outfile.write(jsonObject)
 
 
 if __name__ == '__main__':
